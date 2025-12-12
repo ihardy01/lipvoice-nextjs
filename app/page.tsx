@@ -3,11 +3,13 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { SpeechToTextModal } from "@/components/modals/speech-to-text-modal";
+import { VoiceSelectionModal } from "@/components/modals/voice-selection-modal"; // [!code ++]
 import Image from "next/image";
 
 export default function Home() {
   const [text, setText] = useState("");
-  const [isSTTModalOpen, setIsSTTModalOpen] = useState(false); // [!code ++] State cho Modal
+  const [isSTTModalOpen, setIsSTTModalOpen] = useState(false);
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false); // [!code ++] State cho Modal giọng mẫu
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const MAX_CHARS = 1000;
 
@@ -18,9 +20,7 @@ export default function Home() {
     }
   };
 
-  // [!code ++] Hàm nhận text từ Modal Speech-to-Text
   const handleSTTResult = (result: string) => {
-    // Nối thêm text hoặc thay thế tuỳ logic của bạn
     const newText = text + (text ? " " : "") + result;
     if (newText.length <= MAX_CHARS) {
       setText(newText);
@@ -48,13 +48,15 @@ export default function Home() {
 
       <div className="w-full max-w-2xl flex flex-col gap-6 text-[#65676b]">
         {/* 2. KHU VỰC NHẬP TEXT */}
-        <div className="relative z-10 rounded-4xl border-[#d63384] border-2 shadow-sm transition-all ">
+        <div className="relative z-10 rounded-4xl border-[#d63384] border-2 shadow-sm transition-all bg-white">
           <textarea
             ref={textareaRef}
             value={text}
             onChange={handleTextChange}
             placeholder="Nhập văn bản..."
-            className="w-full p-6 rounded-4xl outline-none resize-none overflow-hidden flex items-center"
+            // [!code change] Giảm padding từ p-6 xuống p-4, thêm min-h, rows=3 để chiều dọc nhỏ lại
+            className="w-full p-4 rounded-4xl outline-none resize-none overflow-hidden flex items-center bg-transparent"
+            rows={3}
           />
         </div>
         <div className="flex justify-between items-center px-6 pb-4">
@@ -68,13 +70,17 @@ export default function Home() {
 
         {/* 3. BUTTONS CHỨC NĂNG */}
         <div className="grid grid-cols-3 gap-4 ">
-          {/* [!code ++] Thêm sự kiện onClick mở Modal */}
           <ActionButton
             icon="/voice.svg"
             label="Speech to Text"
             onClick={() => setIsSTTModalOpen(true)}
           />
-          <ActionButton icon="/setting.svg" label="Chọn giọng mẫu" />
+          {/* [!code change] Thêm sự kiện mở modal chọn giọng */}
+          <ActionButton
+            icon="/setting.svg"
+            label="Chọn giọng mẫu"
+            onClick={() => setIsVoiceModalOpen(true)}
+          />
           <ActionButton icon="/favorite.svg" label="Giọng yêu thích" />
         </div>
 
@@ -87,17 +93,22 @@ export default function Home() {
         </Button>
       </div>
 
-      {/* [!code ++] COMPONENT MODAL */}
+      {/* COMPONENT MODALS */}
       <SpeechToTextModal
         open={isSTTModalOpen}
         onOpenChange={setIsSTTModalOpen}
         onTextConverted={handleSTTResult}
       />
+
+      {/* [!code ++] Modal chọn giọng mẫu */}
+      <VoiceSelectionModal
+        open={isVoiceModalOpen}
+        onOpenChange={setIsVoiceModalOpen}
+      />
     </div>
   );
 }
 
-// [!code ++] Cập nhật ActionButton để nhận onClick
 function ActionButton({
   icon,
   label,
