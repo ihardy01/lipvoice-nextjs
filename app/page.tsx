@@ -3,15 +3,41 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { SpeechToTextModal } from "@/components/modals/speech-to-text-modal";
-import { VoiceSelectionModal } from "@/components/modals/voice-selection-modal"; // [!code ++]
+import {
+  VoiceSelectionModal, // [!code ++] Import data
+} from "@/components/modals/voice-selection-modal";
+import { MOCK_VOICES } from "@/constants/voices";
 import Image from "next/image";
 
 export default function Home() {
   const [text, setText] = useState("");
   const [isSTTModalOpen, setIsSTTModalOpen] = useState(false);
-  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false); // [!code ++] State cho Modal giọng mẫu
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+
+  // [!code ++] State lưu giọng đã chọn (object đầy đủ)
+  const [selectedVoice, setSelectedVoice] = useState<(typeof MOCK_VOICES)[0]>(
+    MOCK_VOICES[0],
+  );
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const MAX_CHARS = 1000;
+
+  // [!code ++] Effect khởi tạo giọng nói từ localStorage
+  useEffect(() => {
+    const savedVoiceId = localStorage.getItem("lipvoice_selected_voice_id");
+    if (savedVoiceId) {
+      const foundVoice = MOCK_VOICES.find((v) => v.id === savedVoiceId);
+      if (foundVoice) {
+        setSelectedVoice(foundVoice);
+      } else {
+        // Nếu không tìm thấy (voice bị xóa hoặc data mới), fallback về giọng đầu tiên
+        setSelectedVoice(MOCK_VOICES[0]);
+      }
+    } else {
+      // Nếu chưa có trong local, mặc định giọng đầu tiên
+      setSelectedVoice(MOCK_VOICES[0]);
+    }
+  }, []);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const inputValue = e.target.value;
@@ -24,6 +50,16 @@ export default function Home() {
     const newText = text + (text ? " " : "") + result;
     if (newText.length <= MAX_CHARS) {
       setText(newText);
+    }
+  };
+
+  // [!code ++] Hàm xử lý khi chọn giọng từ Modal
+  const handleVoiceSelect = (voiceId: string) => {
+    const voice = MOCK_VOICES.find((v) => v.id === voiceId);
+    if (voice) {
+      setSelectedVoice(voice);
+      localStorage.setItem("lipvoice_selected_voice_id", voiceId);
+      setIsVoiceModalOpen(false); // Đóng modal sau khi chọn
     }
   };
 
@@ -54,14 +90,17 @@ export default function Home() {
             value={text}
             onChange={handleTextChange}
             placeholder="Nhập văn bản..."
-            // [!code change] Giảm padding từ p-6 xuống p-4, thêm min-h, rows=3 để chiều dọc nhỏ lại
             className="w-full p-4 rounded-4xl outline-none resize-none overflow-hidden flex items-center bg-transparent"
             rows={3}
           />
         </div>
         <div className="flex justify-between items-center px-6 pb-4">
           <span>
-            Giọng nói đã chọn: <span>Mặc định</span>
+            {/* [!code change] Hiển thị tên giọng đã chọn */}
+            Giọng nói đã chọn:{" "}
+            <span className="font-semibold text-primary">
+              {selectedVoice.name}
+            </span>
           </span>
           <span>
             {text.length}/{MAX_CHARS} ký tự
@@ -75,7 +114,6 @@ export default function Home() {
             label="Speech to Text"
             onClick={() => setIsSTTModalOpen(true)}
           />
-          {/* [!code change] Thêm sự kiện mở modal chọn giọng */}
           <ActionButton
             icon="/setting.svg"
             label="Chọn giọng mẫu"
@@ -100,10 +138,11 @@ export default function Home() {
         onTextConverted={handleSTTResult}
       />
 
-      {/* [!code ++] Modal chọn giọng mẫu */}
       <VoiceSelectionModal
         open={isVoiceModalOpen}
         onOpenChange={setIsVoiceModalOpen}
+        onVoiceSelected={handleVoiceSelect} // [!code ++] Truyền hàm xử lý chọn
+        currentVoiceId={selectedVoice.id} // [!code ++] Truyền ID giọng hiện tại để highlight
       />
     </div>
   );

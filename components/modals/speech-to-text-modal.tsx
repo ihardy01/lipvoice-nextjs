@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Mic, Upload, FileAudio, X, Loader2 } from "lucide-react";
+import { Mic, Upload, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
