@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { useProfile, useLogout } from "@/hooks/use-auth";
+import { ChangePasswordModal } from "@/components/modals/change-password-modal";
 
 const NAV_ITEMS = [
   { label: "Trang chủ", href: "/" },
@@ -28,13 +29,14 @@ const NAV_ITEMS = [
 
 export default function Header() {
   const pathname = usePathname();
+  const [isChangePassOpen, setIsChangePassOpen] = useState(false);
   const { data: profileData, isLoading } = useProfile();
   const logoutMutation = useLogout();
 
   // Xác định trạng thái đăng nhập thực tế dựa trên dữ liệu trả về từ API profile
   const isLoggedIn =
     !!profileData?.metadata && profileData.metadata.role === "customer";
-
+  const isPasswordSet = profileData?.metadata?.is_password ?? true;
   const user = {
     name: profileData?.metadata?.name || "Khách hàng",
     tokens: profileData?.metadata?.token || 0,
@@ -164,7 +166,10 @@ export default function Header() {
                       <User className="mr-2 h-4 w-4" />{" "}
                       <span>Thông tin cá nhân</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer">
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={() => setIsChangePassOpen(true)}
+                    >
                       <Lock className="mr-2 h-4 w-4" />{" "}
                       <span>Đổi mật khẩu</span>
                     </DropdownMenuItem>
@@ -196,6 +201,11 @@ export default function Header() {
           </DropdownMenu>
         </div>
       </div>
+      <ChangePasswordModal
+        isOpen={isChangePassOpen}
+        onClose={() => setIsChangePassOpen(false)}
+        isPasswordSet={isPasswordSet}
+      />
     </header>
   );
 }

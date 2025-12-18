@@ -49,3 +49,15 @@ export const useLogout = () => {
     },
   });
 };
+
+export const useChangePassword = () => {
+  return useMutation({
+    mutationFn: (data: any) => authApi.changePassword(data),
+    onSuccess: () => {
+      toast.success("Đổi mật khẩu thành công!");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Đổi mật khẩu thất bại");
+    },
+  });
+};

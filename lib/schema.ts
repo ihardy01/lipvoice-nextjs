@@ -21,15 +21,33 @@ export const passwordValidation = z
  */
 export const changePasswordSchema = z
   .object({
-    oldPassword: z.string().optional(), // Sẽ xử lý logic yêu cầu hay không ở component tùy theo is_password
+    isPasswordSet: z.boolean().optional(), // Field phụ để phục vụ validation
+    oldPassword: z.string().optional(),
     newPassword: passwordValidation,
     confirmPassword: z.string().min(1, "Vui lòng xác nhận mật khẩu mới"),
   })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Mật khẩu xác nhận không khớp",
-    path: ["confirmPassword"], // Hiển thị lỗi tại ô confirmPassword
-  });
+  .superRefine((data, ctx) => {
+    // Nếu tài khoản đã có mật khẩu (isPasswordSet là true) mà để trống oldPassword
+    if (
+      data.isPasswordSet &&
+      (!data.oldPassword || data.oldPassword.trim() === "")
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Vui lòng nhập mật khẩu hiện tại",
+        path: ["oldPassword"],
+      });
+    }
 
+    // Kiểm tra khớp mật khẩu mới
+    if (data.newPassword !== data.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Mật khẩu xác nhận không khớp",
+        path: ["confirmPassword"],
+      });
+    }
+  });
 /**
  * Schema cho Form Đăng ký (Tái sử dụng passwordValidation)
  */
