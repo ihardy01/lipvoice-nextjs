@@ -3,29 +3,33 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useLogin } from "@/hooks/use-auth"; // Đảm bảo bạn đã tạo file này theo hướng dẫn trước
+import { useLogin } from "@/hooks/use-auth";
+import { loginSchema, LoginInput } from "@/lib/schema";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  // Gọi hook useLogin để xử lý API
   const { mutate: login, isPending } = useLogin();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Gọi hàm mutate từ React Query để kích hoạt API login
-    login({ email, password });
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginInput>({
+    resolver: zodResolver(loginSchema),
+  });
+
+  const onSubmit = (data: LoginInput) => {
+    login(data);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-2xl shadow-lg border border-purple-100">
-        {/* Logo & Header */}
         <div className="flex flex-col items-center text-center space-y-2">
           <Link href="/">
             <Image
@@ -33,7 +37,6 @@ export default function LoginPage() {
               alt="LipVoice Logo"
               width={180}
               height={60}
-              className="mb-4"
               priority
             />
           </Link>
@@ -41,32 +44,32 @@ export default function LoginPage() {
             Chào mừng trở lại
           </h1>
           <p className="text-sm text-muted-foreground">
-            Nhập email và mật khẩu để đăng nhập vào tài khoản của bạn
+            Nhập email và mật khẩu để đăng nhập
           </p>
         </div>
 
-        {/* Form Đăng nhập */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-              Email
-            </label>
+            <label className="text-sm font-medium">Email</label>
             <Input
-              type="email"
+              {...register("email")}
+              type="text"
               placeholder="name@example.com"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="h-11 bg-gray-50 focus-visible:ring-[#DD00AC]"
+              className={
+                errors.email
+                  ? "border-red-500"
+                  : "bg-gray-50 focus-visible:ring-[#DD00AC]"
+              }
               disabled={isPending}
             />
+            {errors.email && (
+              <p className="text-xs text-red-500">{errors.email.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium leading-none">
-                Mật khẩu
-              </label>
+              <label className="text-sm font-medium">Mật khẩu</label>
               <Link
                 href="/forgot-password"
                 className="text-sm font-medium text-[#DD00AC] hover:underline"
@@ -76,19 +79,20 @@ export default function LoginPage() {
             </div>
             <div className="relative">
               <Input
+                {...register("password")}
                 type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-11 bg-gray-50 pr-10 focus-visible:ring-[#DD00AC]"
+                className={
+                  errors.password
+                    ? "border-red-500"
+                    : "bg-gray-50 pr-10 focus-visible:ring-[#DD00AC]"
+                }
                 disabled={isPending}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                disabled={isPending}
               >
                 {showPassword ? (
                   <EyeOff className="h-4 w-4" />
@@ -97,11 +101,14 @@ export default function LoginPage() {
                 )}
               </button>
             </div>
+            {errors.password && (
+              <p className="text-xs text-red-500">{errors.password.message}</p>
+            )}
           </div>
 
           <Button
             type="submit"
-            className="w-full h-11 text-base bg-gradient-to-r from-[#DD00AC] to-[#410093] hover:from-[#FF00EE] hover:to-[#7130c3] transition-all duration-300"
+            className="w-full h-11 bg-gradient-to-r from-[#DD00AC] to-[#410093]"
             disabled={isPending}
           >
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -109,7 +116,6 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        {/* Divider Hoặc */}
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <span className="w-full border-t" />
@@ -121,7 +127,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Nút Google */}
         <Button
           variant="outline"
           type="button"
@@ -150,12 +155,11 @@ export default function LoginPage() {
           Google
         </Button>
 
-        {/* Chuyển hướng Đăng ký */}
         <div className="text-center text-sm">
           Chưa có tài khoản?{" "}
           <Link
             href="/register"
-            className="font-semibold text-[#DD00AC] hover:underline transition-colors"
+            className="font-semibold text-[#DD00AC] hover:underline"
           >
             Đăng ký ngay
           </Link>
