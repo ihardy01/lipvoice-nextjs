@@ -11,7 +11,6 @@ interface VoiceListProps {
 }
 
 export function VoiceList({ items, currentVoiceId, onSelect }: VoiceListProps) {
-  // Xử lý trường hợp không có dữ liệu (Empty State)
   if (items.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground py-10">
@@ -20,9 +19,10 @@ export function VoiceList({ items, currentVoiceId, onSelect }: VoiceListProps) {
     );
   }
 
-  // Render danh sách
   return (
-    <div className="flex-1 overflow-y-auto pr-2 space-y-3">
+    <div className="flex-1 overflow-y-auto pr-2 space-y-3 min-h-0">
+      {" "}
+      {/* Thêm min-h-0 để scroll hoạt động tốt trong flex-col */}
       {items.map((voice) => (
         <VoiceItem
           key={voice.id}
