@@ -20,6 +20,20 @@ export interface AuthResponse {
   };
 }
 
+export interface ProfileMetadata {
+  name: string;
+  email: string;
+  is_password: boolean;
+  token: number;
+  role: "customer" | "guest" | string;
+}
+
+export interface ProfileResponse {
+  message: string;
+  status: number;
+  metadata: ProfileMetadata;
+}
+
 export interface AuthError {
   status: string;
   code: number;

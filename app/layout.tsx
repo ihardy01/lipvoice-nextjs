@@ -30,8 +30,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Header />
         <QueryProvider>
+          <Header />
           <main>{children}</main>
         </QueryProvider>
         <Toaster richColors position="top-right" />

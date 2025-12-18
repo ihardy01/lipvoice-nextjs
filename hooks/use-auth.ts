@@ -1,38 +1,63 @@
 // hooks/use-auth.ts
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authApi } from "@/services/auth.service";
-import { LoginPayload, AuthError } from "@/types/auth";
+import { LoginPayload } from "@/types/auth";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { AxiosError } from "axios";
 
 export const useLogin = () => {
   const router = useRouter();
+  const queryClient = useQueryClient(); // Sử dụng để quản lý cache
 
   return useMutation({
     mutationFn: (data: LoginPayload) => authApi.login(data),
     onSuccess: (data) => {
-      // toast.success sẽ hiện màu xanh lá cây (nhờ richColors)
-      toast.success("Đăng nhập thành công!", {
-        description: "Chào mừng bạn quay trở lại.",
-        duration: 3000, // Tự tắt sau 3 giây
-      });
+      toast.success("Đăng nhập thành công!");
 
-      // Lưu token & User info
       localStorage.setItem("accessToken", data.metadata.accessToken);
       localStorage.setItem("refreshToken", data.metadata.refreshToken);
       localStorage.setItem("user", JSON.stringify(data.metadata.user));
 
+      // LÀM MỚI NGAY: Xóa cache cũ và fetch lại profile mới
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+
       router.push("/");
     },
-    onError: (error: AxiosError<AuthError>) => {
-      const errorData = error.response?.data;
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Đăng nhập thất bại");
+    },
+  });
+};
 
-      // toast.error sẽ hiện màu đỏ (nhờ richColors)
-      toast.error("Đăng nhập thất bại", {
-        description: errorData?.message || "Vui lòng kiểm tra lại thông tin.",
-        duration: 4000,
-      });
+export const useProfile = () => {
+  return useQuery({
+    queryKey: ["profile"],
+    queryFn: () => authApi.getProfile(),
+    // Chỉ gọi API khi có token trong localStorage
+    enabled:
+      typeof window !== "undefined" && !!localStorage.getItem("accessToken"),
+    retry: false,
+    staleTime: 5 * 60 * 1000, // Giữ dữ liệu trong 5 phút
+  });
+};
+
+export const useLogout = () => {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: () => authApi.logout(),
+    onSettled: () => {
+      // Dù API logout thành công hay thất bại, ta vẫn xóa sạch local
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+
+      // Xóa toàn bộ cache liên quan đến profile và set lại về null
+      queryClient.setQueryData(["profile"], null);
+      queryClient.removeQueries({ queryKey: ["profile"] });
+
+      toast.success("Đăng xuất thành công");
+      router.push("/login");
     },
   });
 };
