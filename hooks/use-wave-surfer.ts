@@ -1,25 +1,26 @@
 // hooks/use-wave-surfer.ts
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 export function useWaveSurfer(url: string) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const wavesurfer = useRef<any>(null);
+  const wavesurferRef = useRef<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isReady, setIsReady] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0); // [!code ++]
-  const [duration, setDuration] = useState(0); // [!code ++]
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
 
   useEffect(() => {
     let ws: any = null;
     let isCancelled = false;
 
     const initWaveSurfer = async () => {
-      if (!containerRef.current) return;
+      if (!containerRef.current || !url) return;
 
       try {
         const WaveSurferModule = (await import("wavesurfer.js")).default;
         if (isCancelled) return;
 
+        // Xóa nội dung cũ trước khi khởi tạo
         if (containerRef.current) containerRef.current.innerHTML = "";
 
         ws = WaveSurferModule.create({
@@ -30,23 +31,21 @@ export function useWaveSurfer(url: string) {
           barWidth: 2,
           barGap: 3,
           barRadius: 2,
-          height: 40,
+          height: 60, // Tăng nhẹ chiều cao để dễ nhìn hơn trong modal
           url: url,
         });
 
         ws.on("ready", () => {
           if (!isCancelled) {
             setIsReady(true);
-            setDuration(ws.getDuration()); // [!code ++] Lấy tổng thời gian
+            setDuration(ws.getDuration());
           }
         });
 
-        // [!code ++] Cập nhật thời gian hiện tại khi đang phát
         ws.on("audioprocess", () => {
           if (!isCancelled) setCurrentTime(ws.getCurrentTime());
         });
 
-        // [!code ++] Cập nhật khi người dùng nhấn (seek) trên thanh sóng
         ws.on("interaction", () => {
           if (!isCancelled) setCurrentTime(ws.getCurrentTime());
         });
@@ -55,7 +54,7 @@ export function useWaveSurfer(url: string) {
         ws.on("play", () => !isCancelled && setIsPlaying(true));
         ws.on("pause", () => !isCancelled && setIsPlaying(false));
 
-        wavesurfer.current = ws;
+        wavesurferRef.current = ws;
       } catch (error) {
         console.error("Wavesurfer init error:", error);
       }
@@ -69,12 +68,19 @@ export function useWaveSurfer(url: string) {
     };
   }, [url]);
 
-  const togglePlay = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    wavesurfer.current?.playPause();
-  };
+  // Hàm điều khiển phát/tạm dừng
+  const togglePlayPause = useCallback(() => {
+    wavesurferRef.current?.playPause();
+  }, []);
 
-  // [!code ++] Hàm định dạng giây thành mm:ss
+  // [!code ++] Hàm điều chỉnh tốc độ (0.8 - 1.2)
+  const setSpeed = useCallback((speed: number) => {
+    if (wavesurferRef.current) {
+      wavesurferRef.current.setPlaybackRate(speed);
+    }
+  }, []);
+
+  // Hàm định dạng thời gian
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -85,8 +91,11 @@ export function useWaveSurfer(url: string) {
     containerRef,
     isPlaying,
     isReady,
-    togglePlay,
-    currentTime: formatTime(currentTime), // [!code ++]
-    duration: formatTime(duration), // [!code ++]
+    togglePlayPause,
+    setSpeed, // [!code ++] Xuất hàm setSpeed ra ngoài
+    currentTime, // Trả về dạng number để tính toán %
+    duration, // Trả về dạng number
+    formattedCurrentTime: formatTime(currentTime), // Trả về dạng string để hiển thị
+    formattedDuration: formatTime(duration), // Trả về dạng string để hiển thị
   };
 }

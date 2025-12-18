@@ -6,6 +6,7 @@ import { SpeechToTextModal } from "@/components/modals/speech-to-text-modal";
 import {
   VoiceSelectionModal, // [!code ++] Import data
 } from "@/components/modals/voice-selection-modal";
+import { VoiceCloningModal } from "@/components/modals/voice-cloning-modal";
 import { MOCK_VOICES } from "@/constants/voices";
 import Image from "next/image";
 
@@ -13,6 +14,7 @@ export default function Home() {
   const [text, setText] = useState("");
   const [isSTTModalOpen, setIsSTTModalOpen] = useState(false);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
 
   // [!code ++] State lưu giọng đã chọn (object đầy đủ)
   const [selectedVoice, setSelectedVoice] = useState<(typeof MOCK_VOICES)[0]>(
@@ -119,7 +121,11 @@ export default function Home() {
             label="Chọn giọng đọc mẫu"
             onClick={() => setIsVoiceModalOpen(true)}
           />
-          <ActionButton icon="/voice-cloning.svg" label="Nhân bản giọng" />
+          <ActionButton
+            icon="/voice-cloning.svg"
+            label="Nhân bản giọng"
+            onClick={() => setIsCloneModalOpen(true)}
+          />
         </div>
 
         {/* 4. BUTTON TẠO FILE */}
@@ -143,6 +149,10 @@ export default function Home() {
         onOpenChange={setIsVoiceModalOpen}
         onVoiceSelected={handleVoiceSelect} // [!code ++] Truyền hàm xử lý chọn
         currentVoiceId={selectedVoice.id} // [!code ++] Truyền ID giọng hiện tại để highlight
+      />
+      <VoiceCloningModal
+        open={isCloneModalOpen}
+        onOpenChange={setIsCloneModalOpen}
       />
     </div>
   );
