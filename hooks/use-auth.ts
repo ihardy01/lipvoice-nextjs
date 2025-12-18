@@ -11,13 +11,8 @@ export const useLogin = () => {
 
   return useMutation({
     mutationFn: (data: LoginPayload) => authApi.login(data),
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast.success("Đăng nhập thành công!");
-
-      localStorage.setItem("accessToken", data.metadata.accessToken);
-      localStorage.setItem("refreshToken", data.metadata.refreshToken);
-      localStorage.setItem("user", JSON.stringify(data.metadata.user));
-
       // LÀM MỚI NGAY: Xóa cache cũ và fetch lại profile mới
       queryClient.invalidateQueries({ queryKey: ["profile"] });
 
@@ -33,9 +28,6 @@ export const useProfile = () => {
   return useQuery({
     queryKey: ["profile"],
     queryFn: () => authApi.getProfile(),
-    // Chỉ gọi API khi có token trong localStorage
-    enabled:
-      typeof window !== "undefined" && !!localStorage.getItem("accessToken"),
     retry: false,
     staleTime: 5 * 60 * 1000, // Giữ dữ liệu trong 5 phút
   });
@@ -48,10 +40,6 @@ export const useLogout = () => {
   return useMutation({
     mutationFn: () => authApi.logout(),
     onSettled: () => {
-      // Dù API logout thành công hay thất bại, ta vẫn xóa sạch local
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-
       // Xóa toàn bộ cache liên quan đến profile và set lại về null
       queryClient.setQueryData(["profile"], null);
       queryClient.removeQueries({ queryKey: ["profile"] });

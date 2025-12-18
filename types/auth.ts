@@ -13,11 +13,6 @@ export interface LoginPayload {
 export interface AuthResponse {
   message: string;
   status: number;
-  metadata: {
-    accessToken: string;
-    refreshToken: string;
-    user: User;
-  };
 }
 
 export interface ProfileMetadata {
