@@ -111,15 +111,15 @@ export default function Home() {
         <div className="grid grid-cols-3 gap-4 ">
           <ActionButton
             icon="/voice.svg"
-            label="Speech to Text"
+            label="Speech to text"
             onClick={() => setIsSTTModalOpen(true)}
           />
           <ActionButton
             icon="/setting.svg"
-            label="Chọn giọng mẫu"
+            label="Chọn giọng đọc mẫu"
             onClick={() => setIsVoiceModalOpen(true)}
           />
-          <ActionButton icon="/favorite.svg" label="Giọng yêu thích" />
+          <ActionButton icon="/voice-cloning.svg" label="Nhân bản giọng" />
         </div>
 
         {/* 4. BUTTON TẠO FILE */}
