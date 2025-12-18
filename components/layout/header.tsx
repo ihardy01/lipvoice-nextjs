@@ -75,12 +75,11 @@ export default function Header() {
             <Link
               key={item.href}
               href={item.href}
-              className={cn(
-                "transition-colors",
+              className={
                 pathname === item.href
                   ? "text-[#FF3BD4]"
-                  : "hover:text-[#FF3BD4]",
-              )}
+                  : "hover:text-[#FF3BD4]"
+              }
             >
               {item.label}
             </Link>
@@ -90,12 +89,11 @@ export default function Header() {
           {!isLoading && !isLoggedIn && (
             <Link
               href="/login"
-              className={cn(
-                "transition-colors",
+              className={
                 pathname === "/login"
                   ? "text-[#FF3BD4]"
-                  : "hover:text-[#FF3BD4]",
-              )}
+                  : "hover:text-[#FF3BD4]"
+              }
             >
               Đăng nhập
             </Link>
