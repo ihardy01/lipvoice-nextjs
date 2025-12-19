@@ -15,10 +15,12 @@ interface VoiceItemProps {
 }
 
 export function VoiceItem({ data, isSelected, onSelect }: VoiceItemProps) {
-  const { containerRef, isPlaying, isReady, togglePlay } = useWaveSurfer(
+  // SỬA ĐỔI: Lấy đúng tên hàm togglePlayPause từ hook cũ
+  const { containerRef, isPlaying, isReady, togglePlayPause } = useWaveSurfer(
     data.url,
   );
-  const flagSrc = data.language === "vi" ? "/vi.webp" : "/globe.svg";
+
+  const flagSrc = `/${data.language}.webp`;
 
   return (
     <div
@@ -28,13 +30,18 @@ export function VoiceItem({ data, isSelected, onSelect }: VoiceItemProps) {
           ? "border-[#FF3BD4] bg-[#FF3BD4]/5 ring-1 ring-[#FF3BD4]"
           : "border-border",
       )}
+      // Sự kiện click vào khung bao ngoài sẽ kích hoạt chọn
       onClick={onSelect}
     >
+      {/* Nút Play/Pause */}
       <Button
         size="icon"
         variant="ghost"
         className="h-10 w-10 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80 shrink-0"
-        onClick={togglePlay}
+        onClick={(e) => {
+          e.stopPropagation(); // QUAN TRỌNG: Ngăn sự kiện nổi lên cha (không kích hoạt onSelect)
+          togglePlayPause(); // Gọi đúng tên hàm từ hook
+        }}
       >
         {isPlaying ? (
           <Pause className="fill-current h-4 w-4" />
@@ -63,12 +70,14 @@ export function VoiceItem({ data, isSelected, onSelect }: VoiceItemProps) {
           )}
         </div>
 
+        {/* Vùng Waveform */}
         <div
           className="relative w-full h-10"
+          // Ngăn click vào sóng nhạc kích hoạt onSelect (để người dùng có thể tua)
           onClick={(e) => e.stopPropagation()}
         >
           {!isReady && (
-            <div className="absolute inset-0 flex items-center text-xs text-muted-foreground">
+            <div className="absolute inset-0 flex items-center text-xs text-muted-foreground pointer-events-none">
               <Loader2 className="h-3 w-3 animate-spin mr-2" /> Loading audio...
             </div>
           )}
@@ -76,6 +85,7 @@ export function VoiceItem({ data, isSelected, onSelect }: VoiceItemProps) {
         </div>
       </div>
 
+      {/* Vùng Icon trạng thái & Yêu thích */}
       <div className="flex flex-col items-center gap-2 shrink-0">
         <div
           className={cn(
@@ -89,7 +99,10 @@ export function VoiceItem({ data, isSelected, onSelect }: VoiceItemProps) {
           size="icon"
           variant="ghost"
           className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-full"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation(); // Ngăn click tim kích hoạt onSelect
+            // Xử lý logic yêu thích tại đây
+          }}
         >
           <Heart className="h-4 w-4" />
         </Button>

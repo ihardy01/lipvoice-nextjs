@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, Loader2 } from "lucide-react";
 
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,18 +16,17 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 
-import { MOCK_VOICES } from "@/constants/voices";
 import { VoiceFilters } from "@/components/voice/voice-filter";
 import { VoiceList } from "@/components/voice/voice-list";
+import { useSystemVoices } from "@/hooks/use-voices"; // Sử dụng Hook mới
+import { Voice } from "@/types";
 
 interface VoiceSelectionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onVoiceSelected?: (voiceId: string) => void;
+  onVoiceSelected?: (voice: Voice) => void; // Trả về full object Voice
   currentVoiceId?: string;
 }
-
-const ITEMS_PER_PAGE = 6;
 
 export function VoiceSelectionModal({
   open,
@@ -37,39 +36,73 @@ export function VoiceSelectionModal({
 }: VoiceSelectionModalProps) {
   const [activeTab, setActiveTab] = useState("sample");
   const [showFilters, setShowFilters] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
 
-  // Lọc dữ liệu thô dựa trên tìm kiếm
-  const filteredData = useMemo(() => {
-    return MOCK_VOICES.filter((voice) =>
-      voice.name.toLowerCase().includes(searchQuery.toLowerCase()),
-    );
+  // State cho tìm kiếm & Debounce
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // State filters
+  const [filters, setFilters] = useState({
+    gender: "",
+    language: "",
+    style: "",
+    region: "",
+  });
+
+  // State phân trang
+  const [page, setPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  // --- 1. Xử lý Debounce cho Search (Delay 500ms trước khi gọi API) ---
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPage(1); // Reset về trang 1 khi tìm kiếm
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Dữ liệu cho tab Giọng yêu thích (giả định có thuộc tính isFavorite)
-  const favoriteVoicesData = useMemo(() => {
-    return filteredData.filter((voice: any) => voice.isFavorite);
-  }, [filteredData]);
+  // --- 2. Gọi Hook React Query ---
+  const { data, isLoading } = useSystemVoices({
+    page: page,
+    limit: ITEMS_PER_PAGE,
+    name: debouncedSearch,
+    gender: filters.gender,
+    language: filters.language,
+    style: filters.style,
+    region: filters.region,
+  }); // Hook tự động chạy lại khi các params thay đổi
 
-  // Xác định danh sách hiển thị dựa trên tab đang hoạt động
-  const currentTabData =
-    activeTab === "sample" ? filteredData : favoriteVoicesData;
+  const voices = data?.metadata?.voices || [];
+  const pagination = data?.metadata?.pagination;
+  const totalPages = pagination?.totalPages || 1;
 
-  // Tính toán phân trang
-  const totalPages = Math.ceil(currentTabData.length / ITEMS_PER_PAGE);
-  const paginatedItems = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return currentTabData.slice(start, start + ITEMS_PER_PAGE);
-  }, [currentTabData, currentPage]);
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
+  // --- 3. Các hàm xử lý sự kiện ---
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    setCurrentPage(1); // Reset về trang 1 khi đổi tab
+    setPage(1);
+  };
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    setPage(1);
+  };
+
+  const toggleFilters = () => {
+    if (showFilters) {
+      // Nếu đang mở mà tắt -> Reset filters
+      setFilters({ gender: "", language: "", style: "", region: "" });
+    }
+    setShowFilters(!showFilters);
+  };
+
+  const handleVoiceSelect = (voiceId: string) => {
+    const selectedVoice = voices.find((v) => v.id === voiceId);
+    if (selectedVoice && onVoiceSelected) {
+      onVoiceSelected(selectedVoice);
+      onOpenChange(false);
+    }
   };
 
   return (
@@ -82,80 +115,82 @@ export function VoiceSelectionModal({
             onValueChange={handleTabChange}
             className="w-full h-full flex flex-col"
           >
-            {/* --- HEADER TABS --- */}
+            {/* HEADER */}
             <TabsList className="grid w-full grid-cols-2 h-14 bg-transparent p-0 border-0 rounded-none pr-10">
               <VoiceTabTrigger value="sample" label="Giọng đọc mẫu" />
               <VoiceTabTrigger value="favorite" label="Giọng yêu thích" />
             </TabsList>
 
-            {/* --- SEARCH & FILTERS --- */}
+            {/* SEARCH & FILTERS */}
             <div className="px-6 pt-6 flex flex-col gap-4">
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <input
-                    placeholder="Tìm kiếm bằng từ khoá liên quan"
+                    placeholder="Tìm kiếm giọng đọc..."
                     className="w-full h-10 pl-9 pr-4 rounded-md border border-input bg-white text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                     value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setCurrentPage(1);
-                    }}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
                 <Button
                   variant={showFilters ? "secondary" : "outline"}
-                  onClick={() => setShowFilters(!showFilters)}
+                  onClick={toggleFilters}
                   className="gap-2"
                 >
                   Bộ lọc
                   <Filter className="h-4 w-4" />
                 </Button>
               </div>
-              {showFilters && <VoiceFilters />}
+
+              {showFilters && (
+                <VoiceFilters
+                  filters={filters}
+                  onFilterChange={handleFilterChange}
+                />
+              )}
             </div>
 
-            {/* --- LIST CONTENT --- */}
+            {/* CONTENT LIST */}
             <div className="flex-1 flex flex-col p-6 pt-2 gap-4 overflow-hidden">
               <TabsContent
                 value="sample"
                 className="flex-1 flex flex-col gap-4 overflow-hidden mt-0"
               >
-                <VoiceList
-                  items={paginatedItems}
-                  currentVoiceId={currentVoiceId}
-                  onSelect={(id) => onVoiceSelected?.(id)}
-                />
+                {isLoading ? (
+                  <div className="flex-1 flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <VoiceList
+                    items={voices}
+                    currentVoiceId={currentVoiceId}
+                    onSelect={handleVoiceSelect}
+                  />
+                )}
               </TabsContent>
 
               <TabsContent
                 value="favorite"
                 className="flex-1 flex flex-col gap-4 overflow-hidden mt-0"
               >
-                {favoriteVoicesData.length > 0 ? (
-                  <VoiceList
-                    items={paginatedItems}
-                    currentVoiceId={currentVoiceId}
-                    onSelect={(id) => onVoiceSelected?.(id)}
-                  />
-                ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-4">
-                    <div className="p-4 bg-muted rounded-full">
-                      <Image
-                        src="/favorite.svg"
-                        alt="Empty"
-                        width={48}
-                        height={48}
-                        className="opacity-50"
-                      />
-                    </div>
-                    <p>Chưa có giọng đọc yêu thích nào.</p>
+                {/* Phần Favorite giữ nguyên logic hiển thị empty tạm thời */}
+                <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-4">
+                  <div className="p-4 bg-muted rounded-full">
+                    <Image
+                      src="/favorite.svg"
+                      alt="Empty"
+                      width={48}
+                      height={48}
+                      className="opacity-50"
+                    />
                   </div>
-                )}
+                  <p>Chưa có giọng đọc yêu thích nào.</p>
+                </div>
               </TabsContent>
 
-              {/* --- SHADCN UI PAGINATION --- */}
-              {totalPages > 1 && (
+              {/* PAGINATION */}
+              {totalPages > 1 && activeTab === "sample" && (
                 <div className="pt-4 border-t bg-[#F8F9FA]">
                   <Pagination>
                     <PaginationContent>
@@ -164,43 +199,31 @@ export function VoiceSelectionModal({
                           href="#"
                           onClick={(e) => {
                             e.preventDefault();
-                            if (currentPage > 1)
-                              handlePageChange(currentPage - 1);
+                            if (page > 1) setPage(page - 1);
                           }}
                           className={
-                            currentPage === 1
+                            page === 1
                               ? "pointer-events-none opacity-50"
                               : "cursor-pointer"
                           }
                         />
                       </PaginationItem>
 
-                      {[...Array(totalPages)].map((_, i) => (
-                        <PaginationItem key={i}>
-                          <PaginationLink
-                            href="#"
-                            isActive={currentPage === i + 1}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handlePageChange(i + 1);
-                            }}
-                            className="cursor-pointer"
-                          >
-                            {i + 1}
-                          </PaginationLink>
-                        </PaginationItem>
-                      ))}
+                      <PaginationItem>
+                        <div className="flex items-center justify-center px-4 text-sm font-medium">
+                          Trang {page} / {totalPages}
+                        </div>
+                      </PaginationItem>
 
                       <PaginationItem>
                         <PaginationNext
                           href="#"
                           onClick={(e) => {
                             e.preventDefault();
-                            if (currentPage < totalPages)
-                              handlePageChange(currentPage + 1);
+                            if (page < totalPages) setPage(page + 1);
                           }}
                           className={
-                            currentPage === totalPages
+                            page === totalPages
                               ? "pointer-events-none opacity-50"
                               : "cursor-pointer"
                           }

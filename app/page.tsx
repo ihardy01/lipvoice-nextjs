@@ -9,6 +9,10 @@ import {
 import { VoiceCloningModal } from "@/components/modals/voice-cloning-modal";
 import { MOCK_VOICES } from "@/constants/voices";
 import Image from "next/image";
+import { Voice } from "@/types";
+import { voiceApi } from "@/services/voice.service";
+
+const STORAGE_KEY = "lipvoice_selected_voice";
 
 export default function Home() {
   const [text, setText] = useState("");
@@ -17,28 +21,37 @@ export default function Home() {
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
 
   // [!code ++] State lưu giọng đã chọn (object đầy đủ)
-  const [selectedVoice, setSelectedVoice] = useState<(typeof MOCK_VOICES)[0]>(
-    MOCK_VOICES[0],
-  );
+  const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const MAX_CHARS = 1000;
 
   // [!code ++] Effect khởi tạo giọng nói từ localStorage
   useEffect(() => {
-    const savedVoiceId = localStorage.getItem("lipvoice_selected_voice_id");
-    if (savedVoiceId) {
-      const foundVoice = MOCK_VOICES.find((v) => v.id === savedVoiceId);
-      if (foundVoice) {
-        setSelectedVoice(foundVoice);
-      } else {
-        // Nếu không tìm thấy (voice bị xóa hoặc data mới), fallback về giọng đầu tiên
-        setSelectedVoice(MOCK_VOICES[0]);
+    const initVoice = async () => {
+      try {
+        // 1. Kiểm tra LocalStorage xem user đã chọn trước đó chưa
+        const storedVoice = localStorage.getItem(STORAGE_KEY);
+
+        if (storedVoice) {
+          setSelectedVoice(JSON.parse(storedVoice));
+        } else {
+          // 2. Nếu chưa có, gọi API lấy 1 giọng đầu tiên làm mặc định
+          // Sử dụng voiceApi trực tiếp thay vì hook để kiểm soát việc chỉ gọi 1 lần
+          const data = await voiceApi.getSystemVoices({ limit: 1, page: 1 });
+
+          if (data && data.metadata && data.metadata.voices.length > 0) {
+            const defaultVoice = data.metadata.voices[0];
+            setSelectedVoice(defaultVoice);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultVoice));
+          }
+        }
+      } catch (error) {
+        console.error("Failed to initialize voice:", error);
       }
-    } else {
-      // Nếu chưa có trong local, mặc định giọng đầu tiên
-      setSelectedVoice(MOCK_VOICES[0]);
-    }
+    };
+
+    initVoice();
   }, []);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -56,13 +69,11 @@ export default function Home() {
   };
 
   // [!code ++] Hàm xử lý khi chọn giọng từ Modal
-  const handleVoiceSelect = (voiceId: string) => {
-    const voice = MOCK_VOICES.find((v) => v.id === voiceId);
-    if (voice) {
-      setSelectedVoice(voice);
-      localStorage.setItem("lipvoice_selected_voice_id", voiceId);
-      setIsVoiceModalOpen(false); // Đóng modal sau khi chọn
-    }
+  const handleVoiceSelected = (voice: Voice) => {
+    setSelectedVoice(voice);
+    // Lưu lựa chọn mới vào LocalStorage
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(voice));
+    // Modal tự đóng do logic trong modal, hoặc bạn có thể gọi setIsModalOpen(false) tại đây nếu muốn chắc chắn
   };
 
   useEffect(() => {
@@ -101,7 +112,7 @@ export default function Home() {
             {/* [!code change] Hiển thị tên giọng đã chọn */}
             Giọng nói đã chọn:{" "}
             <span className="font-semibold text-primary">
-              {selectedVoice.name}
+              {selectedVoice?.name || "Chọn giọng"}
             </span>
           </span>
           <span>
@@ -147,8 +158,8 @@ export default function Home() {
       <VoiceSelectionModal
         open={isVoiceModalOpen}
         onOpenChange={setIsVoiceModalOpen}
-        onVoiceSelected={handleVoiceSelect} // [!code ++] Truyền hàm xử lý chọn
-        currentVoiceId={selectedVoice.id} // [!code ++] Truyền ID giọng hiện tại để highlight
+        currentVoiceId={selectedVoice?.id} // Truyền ID để Modal highlight đúng giọng đang chọn
+        onVoiceSelected={handleVoiceSelected}
       />
       <VoiceCloningModal
         open={isCloneModalOpen}
